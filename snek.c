@@ -2,14 +2,27 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 #include <time.h>
+#include <unistd.h>
 #include <wchar.h>
+
+#define ESC 27
+
+enum Direction { up,
+                 down,
+                 left,
+                 rigth };
+typedef enum Direction Direction;
 
 struct Snek {
     // TODO: implement snek as circular buffer
-    int **body;
-    int len;
     int x, y;
+    Direction dir;
+    int len;
+    int head_index;
+    int **body;
 };
 typedef struct Snek Snek;
 
@@ -76,6 +89,45 @@ void prepare_snek(Field *field, Snek *snek) {
 
     snek->body[2][0] = field->width / 2 + 1;
     snek->body[2][1] = field->height / 2;
+
+    snek->head_index = 2;
+    snek->x = field->width / 2 + 1;
+    snek->y = field->height / 2;
+    snek->dir = rigth;
+}
+
+int read_char_of_available(void) {
+    int input = 0;
+    int bytes_to_read;
+    ioctl(STDIN_FILENO, FIONREAD, &bytes_to_read);
+    if (bytes_to_read > 0) {
+        input = getchar();
+        bytes_to_read--;
+        while (bytes_to_read > 0) {
+            getchar();
+            bytes_to_read--;
+        }
+    }
+    return input;
+}
+
+void input_to_snek_dir(Snek *snek, int input) {
+    switch (input) {
+    case 'w':
+        snek->dir = up;
+        break;
+    case 'a':
+        snek->dir = left;
+        break;
+    case 's':
+        snek->dir = down;
+        break;
+    case 'd':
+        snek->dir = rigth;
+        break;
+    default:
+        break;
+    }
 }
 
 void display(Field *field, Snek *snek, Fruts *fruts) {
@@ -119,6 +171,24 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
                     sym = 'o';
                 }
             }
+            if (snek->x == x && snek->y == y) {
+                switch (snek->dir) {
+                case up:
+                    sym = '^';
+                    break;
+                case left:
+                    sym = '<';
+                    break;
+                case down:
+                    sym = 'v';
+                    break;
+                case rigth:
+                    sym = '>';
+                    break;
+                default:
+                    break;
+                }
+            }
             printf("%c", sym);
         }
         printf("┃\n");
@@ -132,6 +202,7 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
 }
 
 int main(int argc, char **argv) {
+    static struct termios oldt, newt;
     setlocale(LC_CTYPE, "");
     struct timespec ts;
     ts.tv_sec = 0;
@@ -160,13 +231,25 @@ int main(int argc, char **argv) {
     fruts.pos[0][0] = 3;
     fruts.pos[0][1] = 7;
 
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
     bool alive = true;
     while (alive) {
-        // TODO: handle user input
+        int input = read_char_of_available();
+        if (input == ESC) {
+            alive = false;
+        }
+        input_to_snek_dir(&snek, input);
+
         // TODO: move snek
         display(&field, &snek, &fruts);
         nanosleep(&ts, &ts);
     }
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
 
     dealloc_snek(&field, &snek);
     dealloc_frut(&fruts);
