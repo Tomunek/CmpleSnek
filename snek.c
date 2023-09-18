@@ -8,7 +8,8 @@
 #include <unistd.h>
 #include <wchar.h>
 
-#define ESC 27
+#define KEY_ESC 27
+#define KEY_QUIT 'q'
 
 enum Direction { up,
                  down,
@@ -97,14 +98,33 @@ void prepare_snek(Field *field, Snek *snek) {
     snek->dir = rigth;
 }
 
-void make_frut(){
-    //TODO
+void make_frut() {
+    // TODO
 }
 
-void prepare_fruts(){
-    //TODO
+void prepare_fruts(Fruts *fruts) {
+    // TODO
+    fruts->pos[0][0] = 3;
+    fruts->pos[0][1] = 7;
 }
 
+int setup_game(Field *field, Snek *snek, Fruts *fruts) {
+    snek->body_capacity = field->width * field->height;
+
+    if (alloc_snek(field, snek)) {
+        fprintf(stderr, "ERROR: buy more RAM! (snek can't fit)");
+        return 1;
+    }
+
+    if (alloc_frut(fruts)) {
+        fprintf(stderr, "ERROR: buy more RAM! (fruits can't fit)");
+        return 1;
+    }
+
+    prepare_snek(field, snek);
+    prepare_fruts(fruts);
+    return 0;
+}
 
 int read_char_of_available(void) {
     int input = 0;
@@ -122,6 +142,8 @@ int read_char_of_available(void) {
 }
 
 void input_to_snek_dir(Snek *snek, int input) {
+    // TODO: make snek unable to turn back into itself
+    // TODO: moves keys into defines
     switch (input) {
     case 'w':
         snek->dir = up;
@@ -152,7 +174,7 @@ bool is_snake(Snek *snek, int x, int y) {
         }
     }
     if (snek->body[current_index][0] == x && snek->body[current_index][1] == y) {
-            return true;
+        return true;
     }
     return false;
 }
@@ -306,28 +328,17 @@ int main(int argc, char **argv) {
     // TODO: cmd line args handling
     field.width = 20;
     field.height = 10;
-    snek.body_capacity = field.width * field.height;
     fruts.count = 1;
 
-    if (alloc_snek(&field, &snek) & alloc_frut(&fruts)) {
-        fprintf(stderr, "ERROR: buy more RAM!");
+    if (setup_game(&field, &snek, &fruts)) {
         return 1;
     }
-
-    if (alloc_snek(&field, &snek)) {
-        fprintf(stderr, "ERROR: buy more RAM!");
-        return 1;
-    }
-
-    prepare_snek(&field, &snek);
-    fruts.pos[0][0] = 3;
-    fruts.pos[0][1] = 7;
 
     setup_console();
     bool alive = true;
     while (alive) {
         int input = read_char_of_available();
-        if (input == ESC) {
+        if (input == KEY_ESC || input == KEY_QUIT) {
             alive = false;
         }
         input_to_snek_dir(&snek, input);
