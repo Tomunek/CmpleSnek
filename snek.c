@@ -126,15 +126,13 @@ int setup_game(Field *field, Snek *snek, Fruts *fruts) {
     return 0;
 }
 
-int read_char_of_available(void) {
+int read_char_if_available(void) {
     int input = 0;
     int bytes_to_read;
     ioctl(STDIN_FILENO, FIONREAD, &bytes_to_read);
     if (bytes_to_read > 0) {
-        input = getchar();
-        bytes_to_read--;
         while (bytes_to_read > 0) {
-            getchar();
+            input = getchar();
             bytes_to_read--;
         }
     }
@@ -337,7 +335,7 @@ int main(int argc, char **argv) {
     setup_console();
     bool alive = true;
     while (alive) {
-        int input = read_char_of_available();
+        int input = read_char_if_available();
         if (input == KEY_ESC || input == KEY_QUIT) {
             alive = false;
         }
