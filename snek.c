@@ -22,6 +22,8 @@ struct Snek {
     Direction dir;
     int len;
     int head_index;
+    int tail_index;
+    int body_capacity;
     int **body;
 };
 typedef struct Snek Snek;
@@ -39,11 +41,11 @@ struct Field {
 typedef struct Field Field;
 
 int alloc_snek(Field *field, Snek *snek) {
-    snek->body = calloc(field->height * field->width, sizeof(int *));
+    snek->body = calloc(snek->body_capacity, sizeof(int *));
     if (!snek->body) {
         return 1;
     }
-    for (int i = 0; i < field->height * field->width; i++) {
+    for (int i = 0; i < snek->body_capacity; i++) {
         snek->body[i] = calloc(2, sizeof(int));
         if (!snek->body[i]) {
             return 1;
@@ -67,7 +69,7 @@ int alloc_frut(Fruts *fruts) {
 }
 
 void dealloc_snek(Field *field, Snek *snek) {
-    for (int i = 0; i < field->height * field->width; i++) {
+    for (int i = 0; i < snek->body_capacity; i++) {
         free(snek->body[i]);
     }
     free(snek->body);
@@ -87,14 +89,22 @@ void prepare_snek(Field *field, Snek *snek) {
     snek->body[1][0] = field->width / 2;
     snek->body[1][1] = field->height / 2;
 
-    snek->body[2][0] = field->width / 2 + 1;
-    snek->body[2][1] = field->height / 2;
-
-    snek->head_index = 2;
+    snek->tail_index = 0;
+    snek->head_index = 1;
+    snek->len = 3;
     snek->x = field->width / 2 + 1;
     snek->y = field->height / 2;
     snek->dir = rigth;
 }
+
+void make_frut(){
+    //TODO
+}
+
+void prepare_fruts(){
+    //TODO
+}
+
 
 int read_char_of_available(void) {
     int input = 0;
@@ -130,6 +140,91 @@ void input_to_snek_dir(Snek *snek, int input) {
     }
 }
 
+bool is_snake(Snek *snek, int x, int y) {
+    int current_index = snek->tail_index;
+    while (current_index != snek->head_index) {
+        if (snek->body[current_index][0] == x && snek->body[current_index][1] == y) {
+            return true;
+        }
+        current_index++;
+        if (current_index >= snek->body_capacity) {
+            current_index = 0;
+        }
+    }
+    if (snek->body[current_index][0] == x && snek->body[current_index][1] == y) {
+            return true;
+    }
+    return false;
+}
+
+bool is_snake_head(Snek *snek, int x, int y) {
+    if (snek->x == x && snek->y == y) {
+        return true;
+    }
+    return false;
+}
+
+bool is_frut(Fruts *fruts, int x, int y) {
+    // TODO
+    return false;
+}
+
+bool move_snek(Field *field, Snek *snek, Fruts *fruts) {
+    int next_x = snek->x, next_y = snek->y;
+    switch (snek->dir) {
+    case up:
+        next_y--;
+        break;
+    case left:
+        next_x--;
+        break;
+    case down:
+        next_y++;
+        break;
+    case rigth:
+        next_x++;
+        break;
+    default:
+        break;
+    }
+
+    // TODO: check if next space if snek, frut or wall
+    // Extend front
+    snek->head_index++;
+    // If end of snake buffer reached, start over
+    if (snek->head_index >= snek->body_capacity) {
+        snek->head_index = 0;
+    }
+    snek->body[snek->head_index][0] = snek->x;
+    snek->body[snek->head_index][1] = snek->y;
+
+    // Remove back
+    snek->tail_index++;
+    // If end of snake buffer reached, start over
+    if (snek->tail_index >= snek->body_capacity) {
+        snek->tail_index = 0;
+    }
+
+    // Move head
+    snek->x = next_x;
+    snek->y = next_y;
+    return 0;
+}
+
+void setup_console() {
+    static struct termios config;
+    tcgetattr(STDIN_FILENO, &config);
+    config.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &config);
+}
+
+void unsetup_console() {
+    static struct termios config;
+    tcgetattr(STDIN_FILENO, &config);
+    config.c_lflag |= (ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &config);
+}
+
 void display(Field *field, Snek *snek, Fruts *fruts) {
     printf("┏");
     for (int i = 0; i < field->width; i++) {
@@ -161,17 +256,15 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
         printf("┃");
         for (int x = 0; x < field->width; x++) {
             char sym = '.';
-            for (int i = 0; i < snek->len; i++) {
-                if (snek->body[i][0] == x && snek->body[i][1] == y) {
-                    sym = '#';
-                }
+            if (is_snake(snek, x, y)) {
+                sym = '#';
             }
             for (int i = 0; i < fruts->count; i++) {
                 if (fruts->pos[i][0] == x && fruts->pos[i][1] == y) {
                     sym = 'o';
                 }
             }
-            if (snek->x == x && snek->y == y) {
+            if (is_snake_head(snek, x, y)) {
                 switch (snek->dir) {
                 case up:
                     sym = '^';
@@ -202,11 +295,10 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
 }
 
 int main(int argc, char **argv) {
-    static struct termios oldt, newt;
     setlocale(LC_CTYPE, "");
     struct timespec ts;
     ts.tv_sec = 0;
-    ts.tv_nsec = 1000 * 1000 * 500;
+    ts.tv_nsec = 1000 * 1000 * 300;
 
     Field field;
     Snek snek;
@@ -214,8 +306,8 @@ int main(int argc, char **argv) {
     // TODO: cmd line args handling
     field.width = 20;
     field.height = 10;
+    snek.body_capacity = field.width * field.height;
     fruts.count = 1;
-    snek.len = 3;
 
     if (alloc_snek(&field, &snek) & alloc_frut(&fruts)) {
         fprintf(stderr, "ERROR: buy more RAM!");
@@ -231,11 +323,7 @@ int main(int argc, char **argv) {
     fruts.pos[0][0] = 3;
     fruts.pos[0][1] = 7;
 
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-
+    setup_console();
     bool alive = true;
     while (alive) {
         int input = read_char_of_available();
@@ -243,13 +331,13 @@ int main(int argc, char **argv) {
             alive = false;
         }
         input_to_snek_dir(&snek, input);
+        move_snek(&field, &snek, &fruts);
 
         // TODO: move snek
         display(&field, &snek, &fruts);
         nanosleep(&ts, &ts);
     }
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    unsetup_console();
 
     dealloc_snek(&field, &snek);
     dealloc_frut(&fruts);
