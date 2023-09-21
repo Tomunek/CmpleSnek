@@ -275,6 +275,7 @@ bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
         return false;
     } else if (is_fruit(fruits, next_x, next_y)) {
         extend_snake(snake);
+        snake->len++;
         remove_fruit(fruits, next_x, next_y);
         spawn_fruit(fruits, field, snake);
     } else {
