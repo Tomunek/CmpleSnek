@@ -30,6 +30,7 @@ typedef struct Snake Snake;
 
 struct Fruits {
     int **pos;
+    int capacity;
     int count;
 };
 typedef struct Fruits Fruits;
@@ -55,11 +56,11 @@ int alloc_snake(Field *field, Snake *snake) {
 }
 
 int alloc_fruits(Fruits *fruits) {
-    fruits->pos = calloc(fruits->count, sizeof(int *));
+    fruits->pos = calloc(fruits->capacity, sizeof(int *));
     if (!fruits->pos) {
         return 1;
     }
-    for (int i = 0; i < fruits->count; i++) {
+    for (int i = 0; i < fruits->capacity; i++) {
         fruits->pos[i] = calloc(2, sizeof(int));
         if (!fruits->pos[i]) {
             return 1;
@@ -76,10 +77,28 @@ void dealloc_snake(Field *field, Snake *snake) {
 }
 
 void dealloc_fruits(Fruits *fruits) {
-    for (int i = 0; i < fruits->count; i++) {
+    for (int i = 0; i < fruits->capacity; i++) {
         free(fruits->pos[i]);
     }
     free(fruits->pos);
+}
+
+void extend_snake(Snake *snake) {
+    snake->head_index++;
+    // If end of snake buffer reached, start over
+    if (snake->head_index >= snake->body_capacity) {
+        snake->head_index = 0;
+    }
+    snake->body[snake->head_index][0] = snake->x;
+    snake->body[snake->head_index][1] = snake->y;
+}
+
+void shorten_snake(Snake *snake) {
+    snake->tail_index++;
+    // If end of snake buffer reached, start over
+    if (snake->tail_index >= snake->body_capacity) {
+        snake->tail_index = 0;
+    }
 }
 
 void prepare_snake(Field *field, Snake *snake) {
@@ -97,14 +116,36 @@ void prepare_snake(Field *field, Snake *snake) {
     snake->dir = rigth;
 }
 
-void spawn_fruit() {
+void spawn_fruit(Fruits *fruits) {
     // TODO
+}
+
+void remove_fruit(Fruits *fruits, int x, int y) {
+    if (fruits->count > 0) {
+        bool found = false;
+        for (int i = 0; i < fruits->count - 1; i++) {
+            if (!found) {
+                if (fruits->pos[i][0] == x && fruits->pos[i][1] == y) {
+                    found = true;
+                    i--;
+                }
+            } else {
+                fruits->pos[i][0] = fruits->pos[i + 1][0];
+                fruits->pos[i][1] = fruits->pos[i + 1][1];
+            }
+        }
+        fruits->count--;
+    }
 }
 
 void prepare_fruits(Fruits *fruits) {
     // TODO
     fruits->pos[0][0] = 3;
     fruits->pos[0][1] = 7;
+
+    fruits->pos[1][0] = 8;
+    fruits->pos[1][1] = 2;
+    fruits->count=2;
 }
 
 int setup_game(Field *field, Snake *snake, Fruits *fruits) {
@@ -184,7 +225,11 @@ bool is_snake_head(Snake *snake, int x, int y) {
 }
 
 bool is_fruit(Fruits *fruits, int x, int y) {
-    // TODO
+    for (int i = 0; i < fruits->count; i++) {
+        if (fruits->pos[i][0] == x && fruits->pos[i][1] == y) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -207,27 +252,24 @@ bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
         break;
     }
 
-    // TODO: check if next space if snake, frut or wall
-    // Extend front
-    snake->head_index++;
-    // If end of snake buffer reached, start over
-    if (snake->head_index >= snake->body_capacity) {
-        snake->head_index = 0;
-    }
-    snake->body[snake->head_index][0] = snake->x;
-    snake->body[snake->head_index][1] = snake->y;
-
-    // Remove back
-    snake->tail_index++;
-    // If end of snake buffer reached, start over
-    if (snake->tail_index >= snake->body_capacity) {
-        snake->tail_index = 0;
+    if (next_x < 0 || next_x >= field->width || next_y < 0 || next_y >= field->height) {
+        // Snake collided with a wall
+        // TODO: Handle "wall-less" field (tp to other side on collision)
+        return false;
+    } else if (is_snake(snake, next_x, next_y)) {
+        return false;
+    } else if (is_fruit(fruits, next_x, next_y)) {
+        extend_snake(snake);
+        remove_fruit(fruits, next_x, next_y);
+        spawn_fruit(fruits);
+    } else {
+        extend_snake(snake);
+        shorten_snake(snake);
     }
 
-    // Move head
     snake->x = next_x;
     snake->y = next_y;
-    return 0;
+    return true;
 }
 
 void setup_console() {
@@ -325,23 +367,21 @@ int main(int argc, char **argv) {
     // TODO: cmd line args handling
     field.width = 20;
     field.height = 10;
-    fruits.count = 1;
+    fruits.capacity = 2;
 
     if (setup_game(&field, &snake, &fruits)) {
         return 1;
     }
 
     setup_console();
-    bool alive = true;
-    while (alive) {
+    bool alive = true, quit = false;
+    while (alive && !quit) {
         int input = read_char_if_available();
         if (input == KEY_ESC || input == KEY_QUIT) {
-            alive = false;
+            quit = true;
         }
         input_to_snake_dir(&snake, input);
-        move_snake(&field, &snake, &fruits);
-
-        // TODO: move snake
+        alive = move_snake(&field, &snake, &fruits);
         display(&field, &snake, &fruits);
         nanosleep(&ts, &ts);
     }
