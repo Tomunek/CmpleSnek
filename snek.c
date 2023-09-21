@@ -6,10 +6,13 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-#include <wchar.h>
 
 #define KEY_ESC 27
 #define KEY_QUIT 'q'
+#define KEY_UP 'w'
+#define KEY_LEFT 'a'
+#define KEY_DOWN 's'
+#define KEY_RIGTH 'd'
 
 enum Direction { up,
                  down,
@@ -219,20 +222,26 @@ int read_char_if_available(void) {
 }
 
 void input_to_snake_dir(Snake *snake, int input) {
-    // TODO: make snake unable to turn back into itself
-    // TODO: moves keys into defines
     switch (input) {
-    case 'w':
-        snake->dir = up;
+    case KEY_UP:
+        if (snake->dir != down) {
+            snake->dir = up;
+        }
         break;
-    case 'a':
-        snake->dir = left;
+    case KEY_LEFT:
+        if (snake->dir != rigth) {
+            snake->dir = left;
+        }
         break;
-    case 's':
-        snake->dir = down;
+    case KEY_DOWN:
+        if (snake->dir != up) {
+            snake->dir = down;
+        }
         break;
-    case 'd':
-        snake->dir = rigth;
+    case KEY_RIGTH:
+        if (snake->dir != left) {
+            snake->dir = rigth;
+        }
         break;
     default:
         break;
@@ -372,6 +381,11 @@ int main(int argc, char **argv) {
     Snake snake;
     Fruits fruits;
     // TODO: cmd line args handling
+    // -w <width>
+    // -h <height>
+    // -f <fruit count>
+    // -n (no wall collision)
+    // --help
     field.width = 20;
     field.height = 10;
     fruits.capacity = 2;
