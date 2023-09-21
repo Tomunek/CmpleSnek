@@ -17,8 +17,7 @@ enum Direction { up,
                  rigth };
 typedef enum Direction Direction;
 
-struct Snek {
-    // TODO: implement snek as circular buffer
+struct Snake {
     int x, y;
     Direction dir;
     int len;
@@ -27,13 +26,13 @@ struct Snek {
     int body_capacity;
     int **body;
 };
-typedef struct Snek Snek;
+typedef struct Snake Snake;
 
-struct Fruts {
+struct Fruits {
     int **pos;
     int count;
 };
-typedef struct Fruts Fruts;
+typedef struct Fruits Fruits;
 
 struct Field {
     int width;
@@ -41,88 +40,88 @@ struct Field {
 };
 typedef struct Field Field;
 
-int alloc_snek(Field *field, Snek *snek) {
-    snek->body = calloc(snek->body_capacity, sizeof(int *));
-    if (!snek->body) {
+int alloc_snake(Field *field, Snake *snake) {
+    snake->body = calloc(snake->body_capacity, sizeof(int *));
+    if (!snake->body) {
         return 1;
     }
-    for (int i = 0; i < snek->body_capacity; i++) {
-        snek->body[i] = calloc(2, sizeof(int));
-        if (!snek->body[i]) {
+    for (int i = 0; i < snake->body_capacity; i++) {
+        snake->body[i] = calloc(2, sizeof(int));
+        if (!snake->body[i]) {
             return 1;
         }
     }
     return 0;
 }
 
-int alloc_frut(Fruts *fruts) {
-    fruts->pos = calloc(fruts->count, sizeof(int *));
-    if (!fruts->pos) {
+int alloc_fruits(Fruits *fruits) {
+    fruits->pos = calloc(fruits->count, sizeof(int *));
+    if (!fruits->pos) {
         return 1;
     }
-    for (int i = 0; i < fruts->count; i++) {
-        fruts->pos[i] = calloc(2, sizeof(int));
-        if (!fruts->pos[i]) {
+    for (int i = 0; i < fruits->count; i++) {
+        fruits->pos[i] = calloc(2, sizeof(int));
+        if (!fruits->pos[i]) {
             return 1;
         }
     }
     return 0;
 }
 
-void dealloc_snek(Field *field, Snek *snek) {
-    for (int i = 0; i < snek->body_capacity; i++) {
-        free(snek->body[i]);
+void dealloc_snake(Field *field, Snake *snake) {
+    for (int i = 0; i < snake->body_capacity; i++) {
+        free(snake->body[i]);
     }
-    free(snek->body);
+    free(snake->body);
 }
 
-void dealloc_frut(Fruts *fruts) {
-    for (int i = 0; i < fruts->count; i++) {
-        free(fruts->pos[i]);
+void dealloc_fruits(Fruits *fruits) {
+    for (int i = 0; i < fruits->count; i++) {
+        free(fruits->pos[i]);
     }
-    free(fruts->pos);
+    free(fruits->pos);
 }
 
-void prepare_snek(Field *field, Snek *snek) {
-    snek->body[0][0] = field->width / 2 - 1;
-    snek->body[0][1] = field->height / 2;
+void prepare_snake(Field *field, Snake *snake) {
+    snake->body[0][0] = field->width / 2 - 1;
+    snake->body[0][1] = field->height / 2;
 
-    snek->body[1][0] = field->width / 2;
-    snek->body[1][1] = field->height / 2;
+    snake->body[1][0] = field->width / 2;
+    snake->body[1][1] = field->height / 2;
 
-    snek->tail_index = 0;
-    snek->head_index = 1;
-    snek->len = 3;
-    snek->x = field->width / 2 + 1;
-    snek->y = field->height / 2;
-    snek->dir = rigth;
+    snake->tail_index = 0;
+    snake->head_index = 1;
+    snake->len = 3;
+    snake->x = field->width / 2 + 1;
+    snake->y = field->height / 2;
+    snake->dir = rigth;
 }
 
-void make_frut() {
+void spawn_fruit() {
     // TODO
 }
 
-void prepare_fruts(Fruts *fruts) {
+void prepare_fruits(Fruits *fruits) {
     // TODO
-    fruts->pos[0][0] = 3;
-    fruts->pos[0][1] = 7;
+    fruits->pos[0][0] = 3;
+    fruits->pos[0][1] = 7;
 }
 
-int setup_game(Field *field, Snek *snek, Fruts *fruts) {
-    snek->body_capacity = field->width * field->height;
+int setup_game(Field *field, Snake *snake, Fruits *fruits) {
+    snake->body_capacity = field->width * field->height;
 
-    if (alloc_snek(field, snek)) {
-        fprintf(stderr, "ERROR: buy more RAM! (snek can't fit)");
+    if (alloc_snake(field, snake)) {
+        fprintf(stderr, "ERROR: buy more RAM! (snake can't fit)");
         return 1;
     }
 
-    if (alloc_frut(fruts)) {
+    if (alloc_fruits(fruits)) {
         fprintf(stderr, "ERROR: buy more RAM! (fruits can't fit)");
         return 1;
     }
 
-    prepare_snek(field, snek);
-    prepare_fruts(fruts);
+    prepare_snake(field, snake);
+    prepare_fruits(fruits);
     return 0;
 }
 
@@ -139,59 +138,59 @@ int read_char_if_available(void) {
     return input;
 }
 
-void input_to_snek_dir(Snek *snek, int input) {
-    // TODO: make snek unable to turn back into itself
+void input_to_snake_dir(Snake *snake, int input) {
+    // TODO: make snake unable to turn back into itself
     // TODO: moves keys into defines
     switch (input) {
     case 'w':
-        snek->dir = up;
+        snake->dir = up;
         break;
     case 'a':
-        snek->dir = left;
+        snake->dir = left;
         break;
     case 's':
-        snek->dir = down;
+        snake->dir = down;
         break;
     case 'd':
-        snek->dir = rigth;
+        snake->dir = rigth;
         break;
     default:
         break;
     }
 }
 
-bool is_snake(Snek *snek, int x, int y) {
-    int current_index = snek->tail_index;
-    while (current_index != snek->head_index) {
-        if (snek->body[current_index][0] == x && snek->body[current_index][1] == y) {
+bool is_snake(Snake *snake, int x, int y) {
+    int current_index = snake->tail_index;
+    while (current_index != snake->head_index) {
+        if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
             return true;
         }
         current_index++;
-        if (current_index >= snek->body_capacity) {
+        if (current_index >= snake->body_capacity) {
             current_index = 0;
         }
     }
-    if (snek->body[current_index][0] == x && snek->body[current_index][1] == y) {
+    if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
         return true;
     }
     return false;
 }
 
-bool is_snake_head(Snek *snek, int x, int y) {
-    if (snek->x == x && snek->y == y) {
+bool is_snake_head(Snake *snake, int x, int y) {
+    if (snake->x == x && snake->y == y) {
         return true;
     }
     return false;
 }
 
-bool is_frut(Fruts *fruts, int x, int y) {
+bool is_fruit(Fruits *fruits, int x, int y) {
     // TODO
     return false;
 }
 
-bool move_snek(Field *field, Snek *snek, Fruts *fruts) {
-    int next_x = snek->x, next_y = snek->y;
-    switch (snek->dir) {
+bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
+    int next_x = snake->x, next_y = snake->y;
+    switch (snake->dir) {
     case up:
         next_y--;
         break;
@@ -208,26 +207,26 @@ bool move_snek(Field *field, Snek *snek, Fruts *fruts) {
         break;
     }
 
-    // TODO: check if next space if snek, frut or wall
+    // TODO: check if next space if snake, frut or wall
     // Extend front
-    snek->head_index++;
+    snake->head_index++;
     // If end of snake buffer reached, start over
-    if (snek->head_index >= snek->body_capacity) {
-        snek->head_index = 0;
+    if (snake->head_index >= snake->body_capacity) {
+        snake->head_index = 0;
     }
-    snek->body[snek->head_index][0] = snek->x;
-    snek->body[snek->head_index][1] = snek->y;
+    snake->body[snake->head_index][0] = snake->x;
+    snake->body[snake->head_index][1] = snake->y;
 
     // Remove back
-    snek->tail_index++;
+    snake->tail_index++;
     // If end of snake buffer reached, start over
-    if (snek->tail_index >= snek->body_capacity) {
-        snek->tail_index = 0;
+    if (snake->tail_index >= snake->body_capacity) {
+        snake->tail_index = 0;
     }
 
     // Move head
-    snek->x = next_x;
-    snek->y = next_y;
+    snake->x = next_x;
+    snake->y = next_y;
     return 0;
 }
 
@@ -245,7 +244,7 @@ void unsetup_console() {
     tcsetattr(STDIN_FILENO, TCSANOW, &config);
 }
 
-void display(Field *field, Snek *snek, Fruts *fruts) {
+void display(Field *field, Snake *snake, Fruits *fruits) {
     printf("┏");
     for (int i = 0; i < field->width; i++) {
         printf("━");
@@ -254,9 +253,9 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
 
     printf("┃");
     printf("SCORE: ");
-    printf("%d", snek->len);
+    printf("%d", snake->len);
     int score_len = 0;
-    int s = snek->len;
+    int s = snake->len;
     while (s > 0) {
         s /= 10;
         score_len++;
@@ -276,16 +275,16 @@ void display(Field *field, Snek *snek, Fruts *fruts) {
         printf("┃");
         for (int x = 0; x < field->width; x++) {
             char sym = '.';
-            if (is_snake(snek, x, y)) {
+            if (is_snake(snake, x, y)) {
                 sym = '#';
             }
-            for (int i = 0; i < fruts->count; i++) {
-                if (fruts->pos[i][0] == x && fruts->pos[i][1] == y) {
+            for (int i = 0; i < fruits->count; i++) {
+                if (fruits->pos[i][0] == x && fruits->pos[i][1] == y) {
                     sym = 'o';
                 }
             }
-            if (is_snake_head(snek, x, y)) {
-                switch (snek->dir) {
+            if (is_snake_head(snake, x, y)) {
+                switch (snake->dir) {
                 case up:
                     sym = '^';
                     break;
@@ -321,14 +320,14 @@ int main(int argc, char **argv) {
     ts.tv_nsec = 1000 * 1000 * 300;
 
     Field field;
-    Snek snek;
-    Fruts fruts;
+    Snake snake;
+    Fruits fruits;
     // TODO: cmd line args handling
     field.width = 20;
     field.height = 10;
-    fruts.count = 1;
+    fruits.count = 1;
 
-    if (setup_game(&field, &snek, &fruts)) {
+    if (setup_game(&field, &snake, &fruits)) {
         return 1;
     }
 
@@ -339,16 +338,16 @@ int main(int argc, char **argv) {
         if (input == KEY_ESC || input == KEY_QUIT) {
             alive = false;
         }
-        input_to_snek_dir(&snek, input);
-        move_snek(&field, &snek, &fruts);
+        input_to_snake_dir(&snake, input);
+        move_snake(&field, &snake, &fruits);
 
-        // TODO: move snek
-        display(&field, &snek, &fruts);
+        // TODO: move snake
+        display(&field, &snake, &fruits);
         nanosleep(&ts, &ts);
     }
     unsetup_console();
 
-    dealloc_snek(&field, &snek);
-    dealloc_frut(&fruts);
+    dealloc_snake(&field, &snake);
+    dealloc_fruits(&fruits);
     return 0;
 }
