@@ -274,9 +274,9 @@ bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
     } else if (is_snake(snake, next_x, next_y)) {
         return false;
     } else if (is_fruit(fruits, next_x, next_y)) {
+        remove_fruit(fruits, next_x, next_y);
         extend_snake(snake);
         snake->len++;
-        remove_fruit(fruits, next_x, next_y);
         spawn_fruit(fruits, field, snake);
     } else {
         extend_snake(snake);
@@ -303,6 +303,7 @@ void unsetup_console() {
 }
 
 void display(Field *field, Snake *snake, Fruits *fruits) {
+    printf("\x1B[H");
     printf("┏");
     for (int i = 0; i < field->width; i++) {
         printf("━");
@@ -385,6 +386,7 @@ int main(int argc, char **argv) {
     // -w <width>
     // -h <height>
     // -f <fruit count>
+    // -s <speed>
     // -n (no wall collision)
     // --help
     field.width = 20;
@@ -396,8 +398,8 @@ int main(int argc, char **argv) {
     }
 
     setup_console();
-    bool alive = true, quit = false;
-    while (alive && !quit) {
+    bool alive = true, quit = false, win = false;
+    while (alive && !quit && !win) {
         int input = read_char_if_available();
         if (input == KEY_ESC || input == KEY_QUIT) {
             quit = true;
@@ -406,8 +408,15 @@ int main(int argc, char **argv) {
         alive = move_snake(&field, &snake, &fruits);
         display(&field, &snake, &fruits);
         nanosleep(&ts, &ts);
+        if(snake.len >= snake.body_capacity - fruits.capacity){
+            win = true;
+        }
     }
     unsetup_console();
+
+    if(win){
+        printf("\nYOU WON!\n");
+    }
 
     dealloc_snake(&field, &snake);
     dealloc_fruits(&fruits);
