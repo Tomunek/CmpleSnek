@@ -41,6 +41,39 @@ struct Field {
 };
 typedef struct Field Field;
 
+bool is_snake(Snake *snake, int x, int y) {
+    int current_index = snake->tail_index;
+    while (current_index != snake->head_index) {
+        if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
+            return true;
+        }
+        current_index++;
+        if (current_index >= snake->body_capacity) {
+            current_index = 0;
+        }
+    }
+    if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
+        return true;
+    }
+    return false;
+}
+
+bool is_snake_head(Snake *snake, int x, int y) {
+    if (snake->x == x && snake->y == y) {
+        return true;
+    }
+    return false;
+}
+
+bool is_fruit(Fruits *fruits, int x, int y) {
+    for (int i = 0; i < fruits->count; i++) {
+        if (fruits->pos[i][0] == x && fruits->pos[i][1] == y) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int alloc_snake(Field *field, Snake *snake) {
     snake->body = calloc(snake->body_capacity, sizeof(int *));
     if (!snake->body) {
@@ -116,8 +149,17 @@ void prepare_snake(Field *field, Snake *snake) {
     snake->dir = rigth;
 }
 
-void spawn_fruit(Fruits *fruits) {
-    // TODO
+void spawn_fruit(Fruits *fruits, Field *field, Snake *snake) {
+    if (fruits->count < fruits->capacity) {
+        int x, y;
+        do {
+            x = rand() % field->width;
+            y = rand() % field->height;
+        } while (is_fruit(fruits, x, y) || is_snake(snake, x, y) || is_snake_head(snake, x, y));
+        fruits->pos[fruits->count][0] = x;
+        fruits->pos[fruits->count][1] = y;
+        fruits->count++;
+    }
 }
 
 void remove_fruit(Fruits *fruits, int x, int y) {
@@ -138,14 +180,11 @@ void remove_fruit(Fruits *fruits, int x, int y) {
     }
 }
 
-void prepare_fruits(Fruits *fruits) {
-    // TODO
-    fruits->pos[0][0] = 3;
-    fruits->pos[0][1] = 7;
-
-    fruits->pos[1][0] = 8;
-    fruits->pos[1][1] = 2;
-    fruits->count=2;
+void prepare_fruits(Fruits *fruits, Field *field, Snake *snake) {
+    fruits->count = 0;
+    while (fruits->count < fruits->capacity) {
+        spawn_fruit(fruits, field, snake);
+    }
 }
 
 int setup_game(Field *field, Snake *snake, Fruits *fruits) {
@@ -162,7 +201,7 @@ int setup_game(Field *field, Snake *snake, Fruits *fruits) {
     }
 
     prepare_snake(field, snake);
-    prepare_fruits(fruits);
+    prepare_fruits(fruits, field, snake);
     return 0;
 }
 
@@ -200,39 +239,6 @@ void input_to_snake_dir(Snake *snake, int input) {
     }
 }
 
-bool is_snake(Snake *snake, int x, int y) {
-    int current_index = snake->tail_index;
-    while (current_index != snake->head_index) {
-        if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
-            return true;
-        }
-        current_index++;
-        if (current_index >= snake->body_capacity) {
-            current_index = 0;
-        }
-    }
-    if (snake->body[current_index][0] == x && snake->body[current_index][1] == y) {
-        return true;
-    }
-    return false;
-}
-
-bool is_snake_head(Snake *snake, int x, int y) {
-    if (snake->x == x && snake->y == y) {
-        return true;
-    }
-    return false;
-}
-
-bool is_fruit(Fruits *fruits, int x, int y) {
-    for (int i = 0; i < fruits->count; i++) {
-        if (fruits->pos[i][0] == x && fruits->pos[i][1] == y) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
     int next_x = snake->x, next_y = snake->y;
     switch (snake->dir) {
@@ -261,7 +267,7 @@ bool move_snake(Field *field, Snake *snake, Fruits *fruits) {
     } else if (is_fruit(fruits, next_x, next_y)) {
         extend_snake(snake);
         remove_fruit(fruits, next_x, next_y);
-        spawn_fruit(fruits);
+        spawn_fruit(fruits, field, snake);
     } else {
         extend_snake(snake);
         shorten_snake(snake);
@@ -356,6 +362,7 @@ void display(Field *field, Snake *snake, Fruits *fruits) {
 }
 
 int main(int argc, char **argv) {
+    srand(time(NULL));
     setlocale(LC_CTYPE, "");
     struct timespec ts;
     ts.tv_sec = 0;
